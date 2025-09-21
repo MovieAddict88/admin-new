@@ -1,18 +1,8 @@
 <?php
 require_once 'auth.php';
 require_login();
-require_once 'tmdb_api.php';
-
-$search_results = [];
-$search_query = '';
-$search_type = 'movie';
-
-if (isset($_GET['query'])) {
-    $tmdb = new TMDB_API();
-    $search_query = $_GET['query'];
-    $search_type = isset($_GET['type']) ? $_GET['type'] : 'movie';
-    $search_results = $tmdb->search($search_query, $search_type);
-}
+// No need to include tmdb_api.php here anymore as the logic is handled in auto_generate.php
+// No need for search logic here anymore
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -102,37 +92,20 @@ if (isset($_GET['query'])) {
             <div id="search" class="tab-content">
                 <h2>Search Mode</h2>
                 <div class="form-container">
-                    <form action="tmdb_importer.php" method="GET">
-                        <input type="hidden" name="tab" value="search">
+                    <form action="auto_generate.php" method="GET">
+                        <input type="hidden" name="mode" value="search">
                         <div class="form-group">
                             <label for="query">Search Title</label>
-                            <input type="text" id="query" name="query" value="<?= htmlspecialchars($search_query) ?>" required>
+                            <input type="text" id="query" name="query" required>
                         </div>
                         <div class="form-group">
-                            <label><input type="radio" name="type" value="movie" <?= $search_type === 'movie' ? 'checked' : '' ?>> Movie</label>
-                            <label><input type="radio" name="type" value="tv" <?= $search_type === 'tv' ? 'checked' : '' ?>> TV Show</label>
+                            <label><input type="radio" name="type" value="movie" checked> Movie</label>
+                            <label><input type="radio" name="type" value="tv"> TV Show</label>
                         </div>
                         <button type="submit" class="btn">Search</button>
                     </form>
                 </div>
             </div>
-
-
-            <?php if (!empty($search_results)): ?>
-            <h2 style="margin-top: 20px;">Search Results</h2>
-            <ul class="search-results">
-                <?php foreach ($search_results as $result): ?>
-                <li class="result-item">
-                    <img src="https://image.tmdb.org/t/p/w200/<?= $result['poster_path'] ?>" alt="Poster">
-                    <div class="info">
-                        <h4><?= htmlspecialchars($result['title'] ?? $result['name']) ?></h4>
-                        <p>Year: <?= htmlspecialchars(substr($result['release_date'] ?? $result['first_air_date'] ?? '', 0, 4)) ?></p>
-                    </div>
-                    <a href="add_content.php?tmdb_id=<?= $result['id'] ?>&type=<?= $search_type ?>" class="btn">Import</a>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-            <?php endif; ?>
         </div>
     </div>
 </div>

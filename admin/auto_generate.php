@@ -4,29 +4,35 @@ require_login();
 require_once 'tmdb_api.php';
 
 $results = [];
-$gen_type = $_GET['type'] ?? 'movie';
-$gen_year = $_GET['year'] ?? null;
-$gen_region = $_GET['region'] ?? 'hollywood';
-
 $tmdb = new TMDB_API();
 
-// We will implement the discover_content method in a later step.
-// For now, this will likely fail, but we are building the structure.
-if ($gen_type === 'movie' || $gen_type === 'both') {
-    // This method doesn't exist yet, we will create it in step 4
-    $movie_results = $tmdb->discover_content('movie', $gen_year, $gen_region);
-    $results = array_merge($results, $movie_results);
-}
-if ($gen_type === 'tv' || $gen_type === 'both') {
-    // This method doesn't exist yet, we will create it in step 4
-    $tv_results = $tmdb->discover_content('tv', $gen_year, $gen_region);
-    $results = array_merge($results, $tv_results);
-}
+if (isset($_GET['mode']) && $_GET['mode'] === 'search') {
+    // Handle Search Mode
+    $search_query = $_GET['query'] ?? '';
+    $search_type = $_GET['type'] ?? 'movie';
+    if (!empty($search_query)) {
+        $results = $tmdb->search($search_query, $search_type);
+    }
+} else {
+    // Handle Regional Generation
+    $gen_type = $_GET['type'] ?? 'movie';
+    $gen_year = $_GET['year'] ?? null;
+    $gen_region = $_GET['region'] ?? 'hollywood';
 
-// Simple sort by popularity descending
-usort($results, function($a, $b) {
-    return ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0);
-});
+    if ($gen_type === 'movie' || $gen_type === 'both') {
+        $movie_results = $tmdb->discover_content('movie', $gen_year, $gen_region);
+        $results = array_merge($results, $movie_results);
+    }
+    if ($gen_type === 'tv' || $gen_type === 'both') {
+        $tv_results = $tmdb->discover_content('tv', $gen_year, $gen_region);
+        $results = array_merge($results, $tv_results);
+    }
+
+    // Simple sort by popularity descending
+    usort($results, function($a, $b) {
+        return ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0);
+    });
+}
 
 ?>
 <!DOCTYPE html>
@@ -58,12 +64,13 @@ usort($results, function($a, $b) {
     <div class="main-content">
         <div class="header"><a href="logout.php">Logout</a></div>
         <div class="page-content">
-            <h1>Generated Results</h1>
-            <a href="tmdb_importer.php" class="btn btn-secondary" style="margin-bottom: 20px;">&laquo; Back to Generator</a>
+            <h1><?php echo isset($_GET['mode']) && $_GET['mode'] === 'search' ? 'Search Results' : 'Generated Results'; ?></h1>
+            <a href="tmdb_importer.php" class="btn btn-secondary" style="margin-bottom: 20px;">&laquo; Back to Importer</a>
 
             <?php if (!empty($results)): ?>
             <ul class="search-results">
                 <?php foreach ($results as $result):
+                    // This logic correctly distinguishes between movies and TV shows based on the presence of the 'title' key.
                     $type = isset($result['title']) ? 'movie' : 'tv';
                 ?>
                 <li class="result-item">
@@ -81,7 +88,7 @@ usort($results, function($a, $b) {
                 <?php endforeach; ?>
             </ul>
             <?php else: ?>
-            <p>No results found for the selected criteria. The `discover_content` method in `tmdb_api.php` may not be implemented yet.</p>
+            <p>No results found for the selected criteria. Please try a different search or generation setting.</p>
             <?php endif; ?>
         </div>
     </div>

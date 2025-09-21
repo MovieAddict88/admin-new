@@ -87,7 +87,16 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) { // Edit Mode
         if ($tmdb_data) {
             $cat_res = $conn->query("SELECT id FROM categories WHERE name = 'Movies' LIMIT 1");
             $content['category_id'] = $cat_res->fetch_assoc()['id'];
-            $content['servers'] = $movie_servers_template; // Pre-fill servers
+
+            // Dynamically create server URLs
+            $dynamic_servers = [];
+            foreach ($movie_servers_template as $server_tpl) {
+                $new_server = $server_tpl;
+                $new_server['url'] = str_replace('TMDB_ID_PLACEHOLDER', $tmdb_id, $server_tpl['url']);
+                $dynamic_servers[] = $new_server;
+            }
+            $content['servers'] = $dynamic_servers;
+
             $tmdb_import_data = $tmdb_data;
         }
     } else { // 'tv'
@@ -95,8 +104,28 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) { // Edit Mode
         if ($tmdb_data) {
             $cat_res = $conn->query("SELECT id FROM categories WHERE name = 'TV Series' LIMIT 1");
             $content['category_id'] = $cat_res->fetch_assoc()['id'];
-            // We don't pre-fill the form here, the JS will do it.
-            // But we pass the data to the JS.
+
+            // Dynamically create server URLs for each episode
+            $dynamic_tv_servers = [];
+            foreach ($tv_servers_template as $server_tpl) {
+                $new_server = $server_tpl;
+                $new_server['url'] = str_replace('TMDB_ID_PLACEHOLDER', $tmdb_id, $server_tpl['url']);
+                $dynamic_tv_servers[] = $new_server;
+            }
+
+            // Inject servers into the TMDB data before sending to JS
+            if (isset($tmdb_data['seasons'])) {
+                foreach ($tmdb_data['seasons'] as &$season) { // Use reference to modify array directly
+                    if (isset($season['episodes'])) {
+                        foreach ($season['episodes'] as &$episode) {
+                            $episode['servers'] = $dynamic_tv_servers;
+                        }
+                    }
+                }
+                unset($season); // Unset reference
+                unset($episode); // Unset reference
+            }
+
             $tmdb_import_data = $tmdb_data;
         }
     }
@@ -413,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="hidden" name="seasons[${seasonIndex}][episodes][${episodeIndex}][thumbnail]" value="${episode.thumbnail || ''}">
                     <div class="servers-container-episode">
                         <h6>Servers for this episode</h6>
-                        ${generateServerInputs(`seasons[${seasonIndex}][episodes][${episodeIndex}][servers]`, serverTemplates.tv, `s${seasonIndex}-ep${episodeIndex}-sv`)}
+                        ${generateServerInputs(`seasons[${seasonIndex}][episodes][${episodeIndex}][servers]`, episode.servers || serverTemplates.tv, `s${seasonIndex}-ep${episodeIndex}-sv`)}
                     </div>
                 </div>`;
             container.insertAdjacentHTML('beforeend', episodeHtml);
